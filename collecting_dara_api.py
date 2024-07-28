@@ -56,3 +56,88 @@ def getCoreData(data):
             Reused.append(core['reused'])
             Legs.append(core['legs'])
             LandingPad.append(core['landpad'])
+
+
+spacex_url="https://api.spacexdata.com/v4/launches/past"
+response = requests.get(spacex_url)
+
+print(response.content)
+
+static_json_url='https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-DS0321EN-SkillsNetwork/datasets/API_call_spacex_api.json'
+response = requests.get(static_json_url)
+
+data_json = response.json()
+data = pd.json_normalize(data=data_json)
+
+
+print(data.head())
+
+# Lets take a subset of our dataframe keeping only the features we want and the flight number, and date_utc.
+data = data[['rocket', 'payloads', 'launchpad', 'cores', 'flight_number', 'date_utc']]
+
+# We will remove rows with multiple cores because those are falcon rockets with 2 extra rocket boosters and rows that have multiple payloads in a single rocket.
+data = data[data['cores'].map(len)==1]
+data = data[data['payloads'].map(len)==1]
+
+# Since payloads and cores are lists of size 1 we will also extract the single value in the list and replace the feature.
+data['cores'] = data['cores'].map(lambda x : x[0])
+data['payloads'] = data['payloads'].map(lambda x : x[0])
+
+# We also want to convert the date_utc to a datetime datatype and then extracting the date leaving the time
+data['date'] = pd.to_datetime(data['date_utc']).dt.date
+
+# Using the date we will restrict the dates of the launches
+data = data[data['date'] <= datetime.date(2020, 11, 13)]
+
+#Global variables 
+BoosterVersion = []
+PayloadMass = []
+Orbit = []
+LaunchSite = []
+Outcome = []
+Flights = []
+GridFins = []
+Reused = []
+Legs = []
+LandingPad = []
+Block = []
+ReusedCount = []
+Serial = []
+Longitude = []
+Latitude = []
+
+getBoosterVersion(data)
+
+# Call getLaunchSite
+getLaunchSite(data)
+
+# Call getPayloadData
+getPayloadData(data)
+
+# Call getCoreData
+getCoreData(data)
+
+launch_dict = {'FlightNumber': list(data['flight_number']),
+'Date': list(data['date']),
+'BoosterVersion':BoosterVersion,
+'PayloadMass':PayloadMass,
+'Orbit':Orbit,
+'LaunchSite':LaunchSite,
+'Outcome':Outcome,
+'Flights':Flights,
+'GridFins':GridFins,
+'Reused':Reused,
+'Legs':Legs,
+'LandingPad':LandingPad,
+'Block':Block,
+'ReusedCount':ReusedCount,
+'Serial':Serial,
+'Longitude': Longitude,
+'Latitude': Latitude}
+
+# Create a data from launch_dict
+data_df = pd.DataFrame(launch_dict)
+
+# Show the head of the dataframe
+print(data_df.head())
+
